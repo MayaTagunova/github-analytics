@@ -10,19 +10,17 @@ import collections
 import copy
 from datetime import datetime, timedelta
 
-script_name = os.path.basename(__file__)
-user = 'MTagunova'
-password = os.environ['GITHUB_TOKEN']
-base_url = 'https://api.github.com'
 
-
-def get_full_list(query: str, payload: typing.Dict[str, typing.Any]) -> typing.List[typing.Any]:
+def get_full_list(query: str,
+                  payload: typing.Dict[str, typing.Any],
+                  options: typing.Dict[str, typing.Any]) \
+        -> typing.List[typing.Any]:
     results = []
     payload = copy.copy(payload)
     while True:
         response = requests.get(query,
-                              auth=requests.auth.HTTPBasicAuth(user, password),
-                              params=payload)
+                                auth=requests.auth.HTTPBasicAuth(options['username'], options['token']),
+                                params=payload)
         response.raise_for_status()
         result = response.json()
         if len(result) == 0:
@@ -33,9 +31,14 @@ def get_full_list(query: str, payload: typing.Dict[str, typing.Any]) -> typing.L
     return results
 
 
-def show_authors(owner: str, repo: str, branch: str):
-    payload = {'per_page': 100, 'page': 1, 'sha': branch}
-    results = get_full_list(f'{base_url}/repos/{owner}/{repo}/commits', payload)
+def show_authors(options: typing.Dict[str, typing.Any]):
+    payload = {'per_page': 100, 'page': 1, 'sha': options['branch']}
+    if options['start_date'] is not None:
+        payload['since'] = f'''{options['start_date']}T00:00:00Z'''
+    if options['end_date'] is not None:
+        payload['until'] = f'''{options['end_date']}T23:59:59Z'''
+    results = get_full_list(f'''{options['base_url']}/repos/{options['owner']}/{options['repo']}/commits''',
+                            payload, options)
 
     authors = collections.defaultdict(int)
     for item in results:
@@ -49,24 +52,24 @@ def show_authors(owner: str, repo: str, branch: str):
 
 
 def filter_by_date(entries: typing.List[typing.Any],
-                   start_date: typing.Optional[str] = None, end_date: typing.Optional[str] = None) \
+                   options: typing.Dict[str, typing.Any]) \
         -> typing.List[typing.Any]:
     results = []
-    if start_date is None or end_date is None:
+    if options['start_date'] is None or options['end_date'] is None:
         return entries
-    start_date = f'{start_date}T00:00:00Z'
-    end_date = f'{end_date}T23:59:59Z'
 
     for item in entries:
-        if item['created_at'] < start_date:
+        if item['created_at'] < options['start_date']:
             break
-        if start_date < item['created_at'] < end_date:
+        if options['start_date'] < item['created_at'] < options['end_date']:
             results.append(item)
 
     return results
 
 
-def filter_old(entries: typing.List[typing.Any], days=30) -> typing.List[typing.Any]:
+def filter_old(entries: typing.List[typing.Any],
+               days=30) \
+        -> typing.List[typing.Any]:
     results = []
     one_month_ago = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -77,15 +80,14 @@ def filter_old(entries: typing.List[typing.Any], days=30) -> typing.List[typing.
     return results
 
 
-def show_pull_requests(owner: str, repo: str, branch: str,
-                       start_date: typing.Optional[str] = None, end_date: typing.Optional[str] = None):
-    payload = {'per_page': 100, 'page': 1, 'base': branch}
-
+def show_pull_requests(options: typing.Dict[str, typing.Any]):
+    payload = {'per_page': 100, 'page': 1, 'base': options['branch']}
+    pulls_url = f'''{options['base_url']}/repos/{options['owner']}/{options['repo']}/pulls'''
     results_open = filter_by_date(
-                   get_full_list(f'{base_url}/repos/{owner}/{repo}/pulls', payload), start_date, end_date)
+                   get_full_list(pulls_url, payload, options), options)
     payload['state'] = 'closed'
     results_closed = filter_by_date(
-                    get_full_list(f'{base_url}/repos/{owner}/{repo}/pulls', payload), start_date, end_date)
+                    get_full_list(pulls_url, payload, options), options)
     results_old = filter_old(results_open, days=30)
 
     print(f'Open pull requests: {len(results_open)}')
@@ -93,17 +95,16 @@ def show_pull_requests(owner: str, repo: str, branch: str,
     print(f'Old pull requests: {len(results_old)}')
 
 
-def show_issues(owner: str, repo: str,
-                start_date: typing.Optional[str] = None, end_date: typing.Optional[str] = None):
+def show_issues(options: typing.Dict[str, typing.Any]):
     payload = {'per_page': 100, 'page': 1}
-    if start_date is not None:
-        payload['since'] = f'{start_date}T00:00:00Z'
-
+    if options['start_date'] is not None:
+        payload['since'] = f'''{options['start_date']}T00:00:00Z'''
+    issues_url = f'''{options['base_url']}/repos/{options['owner']}/{options['repo']}/issues'''
     results_open = filter_by_date(
-                   get_full_list(f'{base_url}/repos/{owner}/{repo}/issues', payload), start_date, end_date)
+                   get_full_list(issues_url, payload, options), options)
     payload['state'] = 'closed'
     results_closed = filter_by_date(
-                    get_full_list(f'{base_url}/repos/{owner}/{repo}/issues', payload), start_date, end_date)
+                    get_full_list(issues_url, payload, options), options)
     results_old = filter_old(results_open, days=14)
 
     print(f'Open issues: {len(results_open)}')
@@ -111,50 +112,59 @@ def show_issues(owner: str, repo: str,
     print(f'Old issues: {len(results_old)}')
 
 
-def analyze(url, branch, start_date: typing.Optional[str] = None, end_date: typing.Optional[str] = None):
-    repo_info = url.split('/')
-    owner = repo_info[-2]
-    repo = repo_info[-1]
+def analyze(options: typing.Dict[str, typing.Any]):
+    options['base_url'] = 'https://api.github.com'
+    repo_info = options['url'].split('/')
+    options['owner'] = repo_info[-2]
+    options['repo'] = repo_info[-1]
 
-    show_authors(owner, repo, branch)
+    show_authors(options)
     print('...')
-    show_pull_requests(owner, repo, branch, start_date, end_date)
+    show_pull_requests(options)
     print('...')
-    show_issues(owner, repo, start_date, end_date)
+    show_issues(options)
 
 
 def main():
-    usage = f'Usage: {script_name} --url <url> [--branch <branch>] [--start-date <dd.mm.yyyy> --end-date <dd.mm.yyyy>]'
+    script_name = os.path.basename(__file__)
+    usage = f'Usage: {script_name} < -u url > ' \
+            f'[ -B branch ] [ -S start-date ] [ -E end-date ] ' \
+            f'[ -U username ] [ -T token ] '
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'h', ['url=', 'branch=', 'start-date=', 'end-date='])
+        opts, args = getopt.getopt(sys.argv[1:], 'hu:B:S:E:U:T:',
+                                   ['help', 'url=', 'branch=', 'start-date=', 'end-date=', 'username=', 'token='])
     except getopt.GetoptError:
         print(usage)
         return 1
 
-    url = ''
-    branch = 'master'
-    start_date = None
-    end_date = None
+    options = {'url': '',
+                  'branch': 'master',
+                  'start_date': None,
+                  'end_date': None}
 
     for opt, arg in opts:
-        if opt == '-h':
+        if opt in ('-h', '--help'):
             print(usage)
             return 1
-        elif opt == '--url':
-            url = arg
-        elif opt == '--branch':
-            branch = arg
-        elif opt == '--start-date':
-            start_date = arg
-        elif opt == '--end-date':
-            end_date = arg
+        elif opt in ('-u', '--url'):
+            options['url'] = arg
+        elif opt in ('-B', '--branch'):
+            options['branch'] = arg
+        elif opt in ('-S', '--start-date'):
+            options['start_date'] = f'''{arg}T00:00:00Z'''
+        elif opt in ('-E', '--end-date'):
+            options['end_date'] = f'''{arg}T23:59:59Z'''
+        elif opt in ('-U', '--username'):
+            options['username'] = arg
+        elif opt in ('-T', '--token'):
+            options['token'] = arg
 
-    if url == '':
+    if options['url'] == '':
         print(usage)
         return 1
 
     try:
-        analyze(url, branch, start_date, end_date)
+        analyze(options)
     except requests.exceptions.HTTPError as err:
         print(err)
         return 1
