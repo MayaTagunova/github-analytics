@@ -19,13 +19,15 @@ def get_full_list(query: str, payload: typing.Dict[str, typing.Any]) -> typing.L
     results = []
     payload = copy.copy(payload)
     while True:
-        result = requests.get(query,
+        response = requests.get(query,
                               auth=requests.auth.HTTPBasicAuth(user, password),
-                              params=payload).json()
-        results.extend(result)
-        payload['page'] = payload['page'] + 1
+                              params=payload)
+        response.raise_for_status()
+        result = response.json()
         if len(result) == 0:
             break
+        results.extend(result)
+        payload['page'] = payload['page'] + 1
 
     return results
 
@@ -75,7 +77,11 @@ def main():
         print(usage)
         return 1
 
-    analyze(url, branch, start_date, end_date)
+    try:
+        analyze(url, branch, start_date, end_date)
+    except requests.exceptions.HTTPError as err:
+        print(err)
+        return 1
 
 
 if __name__ == '__main__':
