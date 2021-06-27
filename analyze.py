@@ -31,6 +31,11 @@ def get_full_list(query: str,
     return results
 
 
+def print_as_table(data: typing.List[typing.Tuple[str, typing.Any]]):
+    for item in data:
+        print("{:<30} {:<30}".format(item[0], item[1]))
+
+
 def show_authors(options: typing.Dict[str, typing.Any]):
     payload = {'per_page': 100, 'page': 1, 'sha': options['branch']}
     if options['start_date'] is not None:
@@ -47,8 +52,8 @@ def show_authors(options: typing.Dict[str, typing.Any]):
 
     authors = sorted(authors.items(), key=lambda kv: kv[1], reverse=True)
 
-    for item in authors[:30]:
-        print(f'{item[0]}: {item[1]}')
+    print_as_table([('Contributor', 'Commits count')])
+    print_as_table(authors[:30])
 
 
 def filter_by_date(entries: typing.List[typing.Any],
@@ -90,9 +95,11 @@ def show_pull_requests(options: typing.Dict[str, typing.Any]):
                     get_full_list(pulls_url, payload, options), options)
     results_old = filter_old(results_open, days=30)
 
-    print(f'Open pull requests: {len(results_open)}')
-    print(f'Closed pull requests: {len(results_closed)}')
-    print(f'Old pull requests: {len(results_old)}')
+    total_data = [('Open pull requests', len(results_open)),
+                  ('Closed pull requests', len(results_closed)),
+                  ('Old pull requests', len(results_old))]
+
+    print_as_table(total_data)
 
 
 def show_issues(options: typing.Dict[str, typing.Any]):
@@ -107,9 +114,11 @@ def show_issues(options: typing.Dict[str, typing.Any]):
                     get_full_list(issues_url, payload, options), options)
     results_old = filter_old(results_open, days=14)
 
-    print(f'Open issues: {len(results_open)}')
-    print(f'Closed issues: {len(results_closed)}')
-    print(f'Old issues: {len(results_old)}')
+    total_data = [('Open issues', len(results_open)),
+                  ('Closed issues', len(results_closed)),
+                  ('Old issues', len(results_old))]
+
+    print_as_table(total_data)
 
 
 def analyze(options: typing.Dict[str, typing.Any]):
@@ -119,9 +128,9 @@ def analyze(options: typing.Dict[str, typing.Any]):
     options['repo'] = repo_info[-1]
 
     show_authors(options)
-    print('...')
+    print()
     show_pull_requests(options)
-    print('...')
+    print()
     show_issues(options)
 
 
