@@ -11,15 +11,20 @@ import copy
 from datetime import datetime, timedelta
 
 
-def get_full_list(query: str,
+def get_all_pages(query: str,
                   payload: typing.Dict[str, typing.Any],
                   options: typing.Dict[str, typing.Any]) \
         -> typing.List[typing.Any]:
     results = []
     payload = copy.copy(payload)
+
+    auth = None
+    if 'username' in options and 'token' in options:
+        auth = requests.auth.HTTPBasicAuth(options['username'], options['token'])
+
     while True:
         response = requests.get(query,
-                                auth=requests.auth.HTTPBasicAuth(options['username'], options['token']),
+                                auth=auth,
                                 params=payload)
         response.raise_for_status()
         result = response.json()
@@ -38,11 +43,11 @@ def print_as_table(data: typing.List[typing.Tuple[str, typing.Any]]):
 
 def show_authors(options: typing.Dict[str, typing.Any]):
     payload = {'per_page': 100, 'page': 1, 'sha': options['branch']}
-    if options['start_date'] is not None:
-        payload['since'] = f'''{options['start_date']}T00:00:00Z'''
-    if options['end_date'] is not None:
-        payload['until'] = f'''{options['end_date']}T23:59:59Z'''
-    results = get_full_list(f'''{options['base_url']}/repos/{options['owner']}/{options['repo']}/commits''',
+    if 'start_date' in options:
+        payload['since'] = options['start_date']
+    if 'end_date' in options:
+        payload['until'] = options['end_date']
+    results = get_all_pages(f'''{options['base_url']}/repos/{options['owner']}/{options['repo']}/commits''',
                             payload, options)
 
     authors = collections.defaultdict(int)
@@ -60,16 +65,10 @@ def filter_by_date(entries: typing.List[typing.Any],
                    options: typing.Dict[str, typing.Any]) \
         -> typing.List[typing.Any]:
     results = []
-    if options['start_date'] is None or options['end_date'] is None:
-        return entries
+    start_date = options.get('start_date', '0000-00-00T00:00:00Z')
+    end_date = options.get('end_date', '9999-99-99T99:99:99Z')
 
-    for item in entries:
-        if item['created_at'] < options['start_date']:
-            break
-        if options['start_date'] < item['created_at'] < options['end_date']:
-            results.append(item)
-
-    return results
+    return [item for item in entries if start_date < item['created_at'] < end_date]
 
 
 def filter_old(entries: typing.List[typing.Any],
@@ -78,21 +77,17 @@ def filter_old(entries: typing.List[typing.Any],
     results = []
     one_month_ago = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    for item in entries:
-        if item['created_at'] < one_month_ago:
-            results.append(item)
-
-    return results
+    return [item for item in entries if item['created_at'] < one_month_ago]
 
 
 def show_pull_requests(options: typing.Dict[str, typing.Any]):
     payload = {'per_page': 100, 'page': 1, 'base': options['branch']}
     pulls_url = f'''{options['base_url']}/repos/{options['owner']}/{options['repo']}/pulls'''
     results_open = filter_by_date(
-                   get_full_list(pulls_url, payload, options), options)
+                   get_all_pages(pulls_url, payload, options), options)
     payload['state'] = 'closed'
     results_closed = filter_by_date(
-                    get_full_list(pulls_url, payload, options), options)
+                     get_all_pages(pulls_url, payload, options), options)
     results_old = filter_old(results_open, days=30)
 
     total_data = [('Open pull requests', len(results_open)),
@@ -104,14 +99,14 @@ def show_pull_requests(options: typing.Dict[str, typing.Any]):
 
 def show_issues(options: typing.Dict[str, typing.Any]):
     payload = {'per_page': 100, 'page': 1}
-    if options['start_date'] is not None:
-        payload['since'] = f'''{options['start_date']}T00:00:00Z'''
+    if 'start_date' in options:
+        payload['since'] = options['start_date']
     issues_url = f'''{options['base_url']}/repos/{options['owner']}/{options['repo']}/issues'''
     results_open = filter_by_date(
-                   get_full_list(issues_url, payload, options), options)
+                   get_all_pages(issues_url, payload, options), options)
     payload['state'] = 'closed'
     results_closed = filter_by_date(
-                    get_full_list(issues_url, payload, options), options)
+                     get_all_pages(issues_url, payload, options), options)
     results_old = filter_old(results_open, days=14)
 
     total_data = [('Open issues', len(results_open)),
@@ -147,9 +142,7 @@ def main():
         return 1
 
     options = {'url': '',
-               'branch': 'master',
-               'start_date': None,
-               'end_date': None}
+               'branch': 'master'}
 
     for opt, arg in opts:
         if opt in ('-h', '--help'):
