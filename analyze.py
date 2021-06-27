@@ -13,25 +13,23 @@ password = os.environ['GITHUB_TOKEN']
 base_url = 'https://api.github.com'
 
 
-def show_authors(url, branch):
-    repo_info = url.split('/')
-    org = repo_info[-2]  # 'smartiko-ru'
-    repo = repo_info[-1]  # 'loraservers'
-
-    payload = {'per_page': 100, 'page': 1, 'sha': branch}
-    if start_date is not None and end_date is not None:
-        payload['since'] = f'{start_date}T00:00:00Z'
-        payload['until'] = f'{end_date}T23:59:59Z'
-
+def get_full_list(query: str, payload: dict) -> list:
     results = []
     while True:
-        result = requests.get(f'{base_url}/repos/{org}/{repo}/commits',
+        result = requests.get(query,
                               auth=requests.auth.HTTPBasicAuth(user, password),
                               params=payload).json()
         results.extend(result)
         payload['page'] = payload['page'] + 1
         if len(result) == 0:
             break
+
+    return results
+
+
+def show_authors(owner: str, repo: str, branch: str):
+    payload = {'per_page': 100, 'page': 1, 'sha': branch}
+    results = get_full_list(f'{base_url}/repos/{owner}/{repo}/commits', payload)
 
     authors = collections.defaultdict(int)
     for item in results:
