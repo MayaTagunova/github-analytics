@@ -66,9 +66,9 @@ def filter_by_date(entries: typing.List[typing.Any],
     return results
 
 
-def filter_old(entries: typing.List[typing.Any]) -> typing.List[typing.Any]:
+def filter_old(entries: typing.List[typing.Any], days=30) -> typing.List[typing.Any]:
     results = []
-    one_month_ago = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    one_month_ago = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     for item in entries:
         if item['created_at'] < one_month_ago:
@@ -86,7 +86,7 @@ def show_pull_requests(owner: str, repo: str, branch: str,
     payload['state'] = 'closed'
     results_closed = filter_by_date(
                     get_full_list(f'{base_url}/repos/{owner}/{repo}/pulls', payload), start_date, end_date)
-    results_old = filter_old(results_open)
+    results_old = filter_old(results_open, days=30)
 
     print(f'Open pull requests: {len(results_open)}')
     print(f'Closed pull requests: {len(results_closed)}')
