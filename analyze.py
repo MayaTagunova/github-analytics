@@ -138,9 +138,9 @@ def main():
         return 1
 
     options = {'url': '',
-                  'branch': 'master',
-                  'start_date': None,
-                  'end_date': None}
+               'branch': 'master',
+               'start_date': None,
+               'end_date': None}
 
     for opt, arg in opts:
         if opt in ('-h', '--help'):
