@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import copy
 import sys
 import getopt
 import os
@@ -6,6 +7,7 @@ import typing
 import requests
 import json
 import collections
+import copy
 
 script_name = os.path.basename(__file__)
 user = 'MTagunova'
@@ -13,8 +15,9 @@ password = os.environ['GITHUB_TOKEN']
 base_url = 'https://api.github.com'
 
 
-def get_full_list(query: str, payload: dict) -> list:
+def get_full_list(query: str, payload: typing.Dict[str, typing.Any]) -> typing.List[typing.Any]:
     results = []
+    payload = copy.copy(payload)
     while True:
         result = requests.get(query,
                               auth=requests.auth.HTTPBasicAuth(user, password),
