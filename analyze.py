@@ -80,6 +80,10 @@ def filter_old(entries: typing.List[typing.Any],
     return [item for item in entries if item['created_at'] < one_month_ago]
 
 
+def filter_issues(entries: typing.List[typing.Any]):
+    return [item for item in entries if 'pull_request' not in item]
+
+
 def show_pull_requests(options: typing.Dict[str, typing.Any]):
     payload = {'per_page': 100, 'page': 1, 'base': options['branch']}
     pulls_url = f'''{options['base_url']}/repos/{options['owner']}/{options['repo']}/pulls'''
@@ -102,11 +106,11 @@ def show_issues(options: typing.Dict[str, typing.Any]):
     if 'start_date' in options:
         payload['since'] = options['start_date']
     issues_url = f'''{options['base_url']}/repos/{options['owner']}/{options['repo']}/issues'''
-    results_open = filter_by_date(
-                   get_all_pages(issues_url, payload, options), options)
+    results_open = filter_issues(filter_by_date(
+                   get_all_pages(issues_url, payload, options), options))
     payload['state'] = 'closed'
-    results_closed = filter_by_date(
-                     get_all_pages(issues_url, payload, options), options)
+    results_closed = filter_issues(filter_by_date(
+                     get_all_pages(issues_url, payload, options), options))
     results_old = filter_old(results_open, days=14)
 
     total_data = [('Open issues', len(results_open)),
