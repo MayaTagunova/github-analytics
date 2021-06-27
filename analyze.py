@@ -80,9 +80,6 @@ def filter_old(entries: typing.List[typing.Any]) -> typing.List[typing.Any]:
 def show_pull_requests(owner: str, repo: str, branch: str,
                        start_date: typing.Optional[str] = None, end_date: typing.Optional[str] = None):
     payload = {'per_page': 100, 'page': 1, 'base': branch}
-    if start_date is not None and end_date is not None:
-        payload['since'] = f'{start_date}T00:00:00Z'
-        payload['until'] = f'{end_date}T23:59:59Z'
 
     results_open = filter_by_date(
                    get_full_list(f'{base_url}/repos/{owner}/{repo}/pulls', payload), start_date, end_date)
