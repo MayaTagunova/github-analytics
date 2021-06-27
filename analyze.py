@@ -107,7 +107,7 @@ def analyze(url, branch, start_date: typing.Optional[str] = None, end_date: typi
 
 
 def main():
-    usage = f'Usage: {script_name} --url <url> --branch <branch> --start-date <dd.mm.yyyy> --end-date <dd.mm.yyyy>'
+    usage = f'Usage: {script_name} --url <url> [--branch <branch>] [--start-date <dd.mm.yyyy> --end-date <dd.mm.yyyy>]'
     try:
         opts, args = getopt.getopt(sys.argv[1:], 'h', ['url=', 'branch=', 'start-date=', 'end-date='])
     except getopt.GetoptError:
