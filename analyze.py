@@ -141,8 +141,7 @@ def main():
         print(usage)
         return 1
 
-    options = {'url': '',
-               'branch': 'master'}
+    options = {'branch': 'master'}
 
     for opt, arg in opts:
         if opt in ('-h', '--help'):
@@ -161,7 +160,7 @@ def main():
         elif opt in ('-T', '--token'):
             options['token'] = arg
 
-    if options['url'] == '':
+    if 'url' not in options:
         print(usage)
         return 1
 
