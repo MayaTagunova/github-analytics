@@ -116,7 +116,7 @@ def show_issues(options: typing.Dict[str, typing.Any]):
 
 def analyze(options: typing.Dict[str, typing.Any]):
     options['base_url'] = 'https://api.github.com'
-    repo_info = options['url'].split('/')
+    repo_info = options['URL'].split('/')
     options['owner'] = repo_info[-2]
     options['repo'] = repo_info[-1]
 
@@ -128,15 +128,18 @@ def analyze(options: typing.Dict[str, typing.Any]):
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    auth_info = 'For unauthenticated requests, the API rate limit allows for up to 60 requests per hour. ' \
+                'If that is not sufficient, you can make up to 5,000 requests per hour using an OAuth token. ' \
+                'Provide the username and token using the -u and -t keys'
+    parser = argparse.ArgumentParser(epilog=auth_info)
     parser.add_argument('-b', '--branch', default='master', help='Branch')
     parser.add_argument('-s', '--start_date', default='1970-01-01',
                         help='Start date as YYYY-MM-DD')
     parser.add_argument('-e', '--end_date', default='9999-12-31',
                         help='End date as YYYY-MM-DD')
     parser.add_argument('-u', '--username', help='Username')
-    parser.add_argument('-t', '--token', help='Authentication token')
-    parser.add_argument('url', help='Repository URL')
+    parser.add_argument('-t', '--token', help='OAuth token')
+    parser.add_argument('URL', help='Repository URL')
 
     options = vars(parser.parse_args())
     options['start_date'] = f'''{options['start_date']}T00:00:00Z'''
