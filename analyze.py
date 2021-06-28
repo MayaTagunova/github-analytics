@@ -68,11 +68,9 @@ def filter_by_date(entries: typing.List[typing.Any],
 
 
 def filter_old(entries: typing.List[typing.Any],
-               days=30) \
+               days: int = 30) \
         -> typing.List[typing.Any]:
-    results = []
     one_month_ago = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
-
     return [item for item in entries if item['created_at'] < one_month_ago]
 
 
