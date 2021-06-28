@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import copy
 import sys
-import getopt
+import argparse
 import os
 import typing
 import requests
@@ -64,11 +64,7 @@ def show_authors(options: typing.Dict[str, typing.Any]):
 def filter_by_date(entries: typing.List[typing.Any],
                    options: typing.Dict[str, typing.Any]) \
         -> typing.List[typing.Any]:
-    results = []
-    start_date = options.get('start_date', '0000-00-00T00:00:00Z')
-    end_date = options.get('end_date', '9999-99-99T99:99:99Z')
-
-    return [item for item in entries if start_date < item['created_at'] < end_date]
+    return [item for item in entries if options['start_date'] < item['created_at'] < options['end_date']]
 
 
 def filter_old(entries: typing.List[typing.Any],
@@ -134,39 +130,19 @@ def analyze(options: typing.Dict[str, typing.Any]):
 
 
 def main():
-    script_name = os.path.basename(__file__)
-    usage = f'Usage: {script_name} < -u url > ' \
-            f'[ -B branch ] [ -S start-date ] [ -E end-date ] ' \
-            f'[ -U username ] [ -T token ] '
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hu:B:S:E:U:T:',
-                                   ['help', 'url=', 'branch=', 'start-date=', 'end-date=', 'username=', 'token='])
-    except getopt.GetoptError:
-        print(usage)
-        return 1
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-b', '--branch', default='master', help='Branch')
+    parser.add_argument('-s', '--start_date', default='1970-01-01',
+                        help='Start date as YYYY-MM-DD')
+    parser.add_argument('-e', '--end_date', default='9999-12-31',
+                        help='End date as YYYY-MM-DD')
+    parser.add_argument('-u', '--username', help='Username')
+    parser.add_argument('-t', '--token', help='Authentication token')
+    parser.add_argument('url', help='Repository URL')
 
-    options = {'branch': 'master'}
-
-    for opt, arg in opts:
-        if opt in ('-h', '--help'):
-            print(usage)
-            return 1
-        elif opt in ('-u', '--url'):
-            options['url'] = arg
-        elif opt in ('-B', '--branch'):
-            options['branch'] = arg
-        elif opt in ('-S', '--start-date'):
-            options['start_date'] = f'''{arg}T00:00:00Z'''
-        elif opt in ('-E', '--end-date'):
-            options['end_date'] = f'''{arg}T23:59:59Z'''
-        elif opt in ('-U', '--username'):
-            options['username'] = arg
-        elif opt in ('-T', '--token'):
-            options['token'] = arg
-
-    if 'url' not in options:
-        print(usage)
-        return 1
+    options = vars(parser.parse_args())
+    options['start_date'] = f'''{options['start_date']}T00:00:00Z'''
+    options['end_date'] = f'''{options['end_date']}T23:59:59Z'''
 
     try:
         analyze(options)
